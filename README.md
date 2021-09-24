@@ -1,7 +1,7 @@
 
 ## RNA-Seq analysis workflow using High Performance Computing
 
-Welcome to the overview of the course
+Welcome to the repository for the course
 *'RNA-Seq analyse workflow using High Performance Computing'*.
 
 This course will be delivered online over two half-days:  
@@ -18,29 +18,31 @@ Guy's and St Thomas' NHS Foundation Trust and King's College London
 Guy's Hospital
 Great Maze Pond, London SE1 9RT
 
+## Workflow
 
-### General Information: 
-RNA sequencing is a popular next generation sequencing method that enables the identification and quantification of both known and novel transcripts across the entire transcriptome, but requires several complex and computationally-intensive processing steps. This course gives an introduction into how researchers with a beginner's understanding on the command line interface can gain experience with such methods on Rosalind, KCL's high performance computing system. RNA-Seq data will be processed and analysed hands-on by working through a guided example using a sample of real published datasets. 
+![](pipeline_run.png)
 
-### Pre-requisite:
 
-* Basic knowledge of working on the command line is required for Part 1 of the course. \
-* Basic knowledge of R is required for Part 2 of the course. \
-* An account on Rosalind is necessary and access to your home directory must be fully set up prior to attending this course. Request an account [here.](https://rosalind.kcl.ac.uk/requesting_access/) \
-* Basic understanding of RNA sequencing is not necessary but would be beneficial. 
+## Contents
 
-### Format:
-Students will use their own laptops. This will allow them to store notes and scripts, as well as enabling them to carry out hands-on analysis. They will use their own Rosalind accounts to follow a guided workflow and obtain results from a sample of a published dataset.
+The repository contains a number of shell scripts, an R markdown file, and a subdirectory with examples. 
 
-### Learning Outcomes:
-Students will:
+### Shell scripts
 
-*	Gain an overview of the steps involved in RNA-Seq data processing and analysis, from QC and alignment through to producing a count matrix, identifying differentially expressed genes, and interpreting results in a biologically relevant manner.
-*	Learn the methods involved in submitting scripts and running jobs in a high performance computing system.
-*	Be able to perform a basic RNA-Seq data processing workflow from raw data files through to outputs of differential gene expression.
-*	Understand how to use RNA-Seq data and differential gene expression to identify results of interest based on their biological question.
-*	Improve on their ability to utilise the command line.
-*	By the end of the course, successfully obtain a fully-processed differential gene expression dataset.
+Each shell script is part of the RNA-Seq data processing pipeline to be used during the course. They are not standalone scripts, and must be used sequentially. They are not generalised, they are written to be easily understood and process a sample dataset. 
+
+
+### Examples
+
+The examples subdirectory contains example shell scripts for each process to be submitted to the HPC system. These scripts are not supposed to be run, rather they contain the stripped-back, bare essential examples of the functions. By removing the job scheduling parameters, the paths and directory settings, the loops, the basic use of the functions in the pipeline become simplified and clear. 
+
+### R markdown
+
+The R markdown file contains the code required to create a notebook containing the entire workflow from the counts matrix generated in the processing pipeline to the desired output of a differential gene expression dataset. This includes the basic workflow to achieve this, QC options to ensure the data is accurate and reliable for downstream analyses, and additional steps to further utilise the data. It has been written specifically to analyse the sample dataset. 
+
+### The sample dataset
+The raw data was obtained from the publication: [**"A Beginner's Guide to Analysis of RNA Sequencing Data"**](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6096346/]) \
+The example dataset contains sequencing data from naive murine alveolar macrophages, comparing with those isolated from transplanted lungs 24 hours postreperfusion (n=4).
 
 ### Collaborations
 There are numerous downstream analysis options available given the quality checked and cleaned differential gene expression data. These approaches must be tailored to requirements in a project-specific manner. If you are interested in conducting such analyses or potential bioinformatics collaborations, please contact **Dr. Mansoor Saqi**, Head of Translational Bioinformatics at the NIHR Biomedical Research Centre, at mansoor.saqi@kcl.ac.uk
