@@ -1,0 +1,321 @@
+---
+title: 'Differential gene expression guide'
+subtitle: 'Utilising the DESeq2 package'
+author: 'Prasanth Sivakumar (prasanth.sivakumar@kcl.ac.uk)'
+output:
+  rmdformats::readthedown:
+    toc_depth: 4
+    toc_collapsed: FALSE
+    highlight: espresso
+---
+
+```{r setup, include=FALSE}
+#install.packages('knitr')
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+# set your own path to the folder containing the gene counts matrix
+knitr::opts_knit$set(root.dir = normalizePath('C:/Users/Prasanth/google_drive/guys/teaching/gene_expression/')) 
+```
+
+## Introduction
+
+This guide is designed to provide an example workflow for conducting differential gene expression analysis using the DESeq2 package. It is a simplified version of the [**DESeq2 vignette**](http://www.bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html).
+
+It typically uses default settings; alternative methods and arguments for each function should be explored when conducting the analysis on different datasets.
+
+The raw data was obtained from the publication: _*[**"A Beginner’s Guide to Analysis of RNA Sequencing Data"**]*(https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6096346/])_.
+
+The example dataset contains sequencing data from naive murine alveolar macrophages, comparing with those isolated from transplanted lungs 24 hours postreperfusion (n=4). 
+
+
+## Basic workflow
+
+Initially this guide will demonstrate the direct steps from input data to a differential gene expression results table without any additional investigation of the data. Subsequent additional and optional workflow steps will be explained following on from this.
+
+## Libraries
+
+Four libraries are required for following this differential gene expression analysis guide:
+
+1. [**BiocManager**](https://cran.r-project.org/web/packages/BiocManager/): package manager for Bioconductor packages for high-throughput genomic analysis 
+1. [**tidyverse**](https://cran.r-project.org/web/packages/tidyverse/): set of packages with numerous functions useful for data analysis
+1. [**DESeq2**](https://bioconductor.org/packages/release/bioc/html/DESeq2.html): differential gene expression analysis package
+1. [**pheatmap**](https://cran.r-project.org/web/packages/pheatmap/): package for plotting heatmaps
+
+```{r libraries, message=FALSE}
+library(BiocManager)
+library(tidyverse)
+library(DESeq2)
+library(pheatmap)
+
+# if package is not installed:
+#install.packages('BiocManager')
+#install.packages('tidyverse')
+#install.packages('pheatmap')
+#BiocManager::install('DESeq2')
+```
+
+Run the above chunk and run *sessionInfo* in the console to make sure the libraries are now loaded
+
+If there is an error loading the package, make sure the package is listed when you run *installed.packages()* \
+If not present, install the packages from the console with the examples above.
+
+## Input data
+
+Two input data files are required for this guide, the RNA-Seq reads counts matrix and the samples metadata file
+
+### Counts matrix
+
+The counts matrix should be a matrix of features x samples, where each feature in this case is a unique gene.
+Each row should contain any and all un-normalised read count data for one gene, and each column should contain any and all un-normalised read count data for each sample. Therefore, cell~ij~ in the matrix will denote the un-normalised read count data for gene _i_ in sample _j_.
+The gene names should be the row names of the matrix, and the sample IDs the column names of the matrix.
+The data in the counts matrix should be positive integers (or zero).
+
+In this guide, the example counts matrix produced earlier will be used. 
+First load the file into R, and convert it to a true matrix.
+The names are the entire file paths from Rosalind, we will set them to the sample names as we load the metadata
+
+```{r cm}
+counts.dataframe <- read.table('gene_counts.tab', header = T, row.names = 1)
+counts.matrix <- as.matrix(counts.dataframe[, -c(1:5)])
+# dimensions of counts matrix
+dim(counts.matrix)
+```
+
+
+### Metadata
+
+The metadata file should contain all necessary experimental data, outside of the gene counts, required to perform the desired differential gene expression analysis. This typically includes the IDs of the samples, the variable(s) of interest, and any covariates or batch effects that should be factored in to the analysis.
+Each variable should be an individual column, in which the statuses of all samples for that variable are indicated.
+The sample IDs should be the row names of the data frame, and the variable names the column names of the data frame.
+
+The accompanying metadata for the pasilla dataset, filtered to only include the variables of interest
+
+```{r md}
+metadata.file <- read.csv('SraRunTable.txt', row.names = 1)
+coldata <- metadata.file['isolate']
+# metadata dataframe size
+dim(coldata)
+# metadata subset
+print(coldata)
+```
+
+The factor levels for each variable in the metadata should be set. By default R will simply set these levels by alphabetical order, so the reference level (ie. the baseline) should be set. In case the variables contain characters instead of factors, they will be converted.
+
+```{r factor_level}
+coldata$isolate <- factor(coldata$isolate, levels = c('Naive', 'Reperfused'))
+levels(coldata$isolate)
+```
+
+The row names of the metadata should exactly match the column names of the counts matrix, including order. This can be checked with the _identical_ function, and must return TRUE before proceeding.
+
+```{r identical}
+identical(colnames(counts.matrix), rownames(coldata))
+# returns FALSE so names need correcting
+```
+
+The names are the entire file paths from Rosalind, rather than just the sample names, so we will set them to just the sample names. Then re-check the new sample names in both files to make sure they are now identical.
+
+```{r correct_names}
+colnames(counts.matrix)
+rownames(coldata)
+sample.names <- str_extract(colnames(counts.matrix), 'SRR74575[0-9]+')
+colnames(counts.matrix) <- sample.names
+```
+
+```{r check_names}
+# check names post-adjustment
+colnames(counts.matrix)
+rownames(coldata)
+identical(colnames(counts.matrix), rownames(coldata))
+# now returns TRUE so data fulfils requirements
+```
+
+### Design
+
+The specific design of the analysis needs to be provided to the _DESeqDataSet_ constructor function. This is in the form of a formula which details the variables to be included and how they should be incorporated. In the _DESeq_ function, the primary variable of interest should be the last variable in the design formula, with all preceding variables treated as additional explanatory variables whose effect should be excluded in determining the effect of the variable of interest in any differential gene expression.
+
+Example experiment designs below. design.formula shows the design formula modelling by differences in the condition variable only, whereas alt.design.formula models for both type and condition variables, with the results of analysis being based on differences attributed specifically to the condition variable.
+
+```{r design}
+design.formula <- formula(~ isolate)
+# basic design
+design.formula
+```
+
+A model matrix can be used to show how the provided design formula will be used to control the use of each variable in the metadata in the modelling process.
+
+```{r model_matrix}
+modelled.matrix <- model.matrix(design.formula, coldata)
+modelled.matrix
+```
+
+## _DESeqDataSet_
+
+With the counts matrix, metadata, and design, the _DESeqDataSet_ object can be created.
+This contains all of the information provided in a rigid standard object structure.
+
+```{r dds}
+deseq.dataset <- DESeqDataSetFromMatrix(countData = counts.matrix,
+                                        colData = coldata,
+                                        design = design.formula)
+deseq.dataset
+```              
+
+The _DESeqDataSet_ can be filtered to remove low count genes as a first step. This is not necessary, but is useful to reduce the time and memory required for downstream differential gene expression analysis. The threshold for filtering should only remove genes for which total counts across the dataset are insufficient to analyse for differential expression.
+
+```{r filt_dds}
+deseq.dataset.filtered <- deseq.dataset[rowSums(counts(deseq.dataset)) >= 3]
+deseq.dataset.filtered
+```
+
+## Differential gene expression
+
+To analyse the differential expression across all genes in the dataset by the provided design, three steps are required, and all are run combined using a single function in DESeq2.
+
+1. Normalisation
+1. Estimated dispersion
+1. Statistical analysis
+
+These steps are sequentially run using the single _DESeq_ function, using the information already incorporated into the _DESeqDataSet_ object.
+
+```{r deseq}
+deseq.analysis <- DESeq(deseq.dataset.filtered)
+deseq.analysis
+```
+
+* Size factors: RNA-Seq library sizes and library compositions vary across samples, and this step determines the levels for which each sample's counts should be corrected for this. The counts matrix needs to be normalised in this way to identify relative differences in gene expression
+* Dispersion: Variance of gene expression within groups needs to be determined to find significant differences between groups. However, variance differs depending on mean count across the dataset, and so dispersion is a measure used to take these differences into consideration when estimating expected count variation.
+Within-group variation per gene is difficult to accurately estimate given sample sizes are normally fairly low. DESeq2 uses variance information across many genes which have similar mean expression levels, assuming that genes with similar mean counts have similar variance. Using this information, the dispersion level of each gene is 'shrunk' towards the expected dispersion level given that gene's counts. The shrinkage does not eliminate the variance present in the original counts, but it dampens it, making it easier to find true between-group differences. Genes with much higher dispersion than estimated are not shrunk, as these far exceed the expected variation due to typical count variability alone, and the changes may result from the variables in the design formula.
+* Model fitting: DESeq2 uses a negative binomial generalised linear model as is typical with count data. Simply, the modified mean, determined after correction by size factors and dispersion estimates, is used along with the gene-specific dispersion estimate to model the counts using a negative binomial distribution.   
+
+The results of Wald test using the model can be accessed using the _results_ function, providing the desired log~2~ fold change, p-value and adjusted p-value for each gene in the comparison provided by the design formula. These are the results of the differential gene expression analysis, prepared for downstream filtering and interpretation.
+
+```{r res}
+deseq.results <- results(deseq.analysis, alpha = 0.05)
+summary(deseq.results)
+```
+
+You now have differential gene expression results. You can write these results to a file to open excel
+
+```{r csv}
+deseq.csv <- as.data.frame(deseq.results) %>% rownames_to_column('gene_id') %>% arrange(padj)
+head(deseq.csv)
+write.csv(deseq.csv, 'deseq_results.csv', row.names = F, quote = F)
+```
+
+## Additional workflow
+
+Additional steps during the differential gene expression workflow are not essential to obtaining the results, but are highly recommended to ensure the results are valid and the analysis has been performed in optimal settings. They can also provide supplementary information to aid in understanding the expression results and planning downstream analyses.
+
+## Prior QC
+
+Before running the differential gene expression analysis, it is best to perform some quick checks on the counts matrix, to ensure it is suitable for use in the analysis. 
+
+One method is to check the library sizes and make sure the differences in sizes after sequencing are normalised for.
+
+```{r size}
+colSums(counts.matrix) %>%
+  as.data.frame() %>%
+  `colnames<-`('counts') %>%
+  rownames_to_column('sample') %>%
+  ggplot(aes(sample, counts)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+```
+
+As you can see, the libraries have notable differences in total counts, so without normalising these, the differential gene expression will just show differences in library sizes. \
+DESeq2 does this for us, as part of the _DESeq_ function. 
+
+To check if the normalisation was successful:
+
+```{r sf}
+colSums(counts(deseq.analysis, normalized = T)) %>%
+  as.data.frame() %>%
+  `colnames<-`('counts') %>%
+  rownames_to_column('sample') %>%
+  ggplot(aes(sample, counts)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+```
+
+You can see now that the libraries are all broadly the same size.
+
+This normalised counts matrix can then be explored on a gene-by-gene level, enabling identification of meaningful relative differences in sample count data.
+
+```{r ind_plot}
+plotCounts(deseq.analysis, gene = 'ENSMUSG00000020649', intgroup = 'isolate')
+```
+
+## Clustering
+
+Clustering of data features or samples from the counts matrix is a standard method of analysis prior to differential gene expression. It provides information on the similarities between the data groups, such as if the samples group as expected given different variable status, or if features group in a manner that reveals potential similarities in genetic function or pathway.
+
+An alternative _DESeqDataSet_ object can be created using the _vst_ method. This is a data transformation method that reduces the effect of the mean counts of genes on the level of variance in counts of genes across the whole experiment. It is not used in differential gene expression, but is useful for clustering methods as it makes the data more homoskedastic.
+
+Example variance-stabilised _DESeqDataSet_:
+
+```{r vst}
+vst.matrix <- varianceStabilizingTransformation(deseq.analysis)
+head(vst.matrix)
+```
+
+Using the transformed data, principal component analysis can be conducted. The aim of this method is to reduce the many related variables down to a few unrelated variables, and determine the effect of these on gene count variance across the experiment. Typically the two principal components with the strongest effects are plotted in a PCA plot to show grouping within the explanatory variables.
+
+```{r pca}
+pca.df <- vst.matrix %>% assay() %>% t() %>% prcomp()
+pca.plot <- plotPCA(vst.matrix, intgroup = c('isolate'))
+pca.plot
+```
+
+Another form of typical clustering analysis is a denogram representing heirarchical clustering of samples by overall gene counts pattern, and this can be combined with a heatmap showing the correlation of each sample to every other sample by the same pattern.
+
+```{r heatmap}
+correlation.matrix <- vst.matrix %>% assay() %>% cor()
+pheatmap(correlation.matrix, annotation_col = coldata)
+```
+
+
+## _DESeq_ function checks
+
+DESeq2 filters the overall counts matrix to remove genes with low counts from the analysis to prevent excessive penalisng in multiple testing correction due to genes with limited information. The threshold for classifying low counts is determined by seeking the cut-off which would provide the greatest number of significant hits after multiple testing correction, and varies across each comparison. This threshold can be accessed and modified. The plot below shows the number of genes excluded from the analysis resulting from a filter threshold set at a given quantile _theta_, and the vertical line showing the final _theta_ cutoff used.
+
+```{r filt}
+ggplot(metadata(deseq.results)$filterNumRej, aes(theta, numRej)) +
+  geom_point() +
+  geom_vline(xintercept = metadata(deseq.results)$filterTheta)
+```
+
+The _DESeq_ function utilises the calculated dispersion metric dataset-wide in order to estimate more accurate variance levels in each individual gene's counts. It is key that these dispersion values fit with the pattern expected across the dataset, such as lower dispersion levels at greater mean normalised counts, and most genes showing similar levels of dispersion at a given number of mean normalised counts. They overall distribution pattern of the data should follow the fitted line of expected levels of dispersion regardless of any model variable, and the dispersion levels of most genes should be shrunk towards this line, towards a more likely true level of gene dispersion. If the dispersion data does not fit this pattern, the normalised count data may not follow the expected variance patterns and the subsequent gene expression differences tested may not be valid.
+
+```{r disp_est}
+plotDispEsts(deseq.analysis)
+```
+
+## Differential gene expression results checks
+
+One of the quality checks to use to determine if the differential gene expression results fit the pattern expected from the statistical analysis is to plot the p-value distributions. The histograms should show a flat, even distribution across p-values, with the exception of a large peak at the very lowest p-values indicating the presence of true differences based on the contrast provided. Histogram patterns that deviate from this expectation are a sign that something is wrong with the analysis.
+
+```{r pval_hist}
+hist(deseq.results$pvalue[deseq.results$baseMean > 1], xlab = 'p-value', main = 'histogram of p-values')
+```
+
+An MA plot is another check, to identify the variability of fold change levels across genes with different count levels. The genes are coloured if significantly different in the expression analysis, and these coloured points should occur with lower fold changes as mean counts increases. Genes with the very lowest counts should typically not be coloured regardless of fold change, as there is not enough data for these from which to draw reliable conclusions.  
+
+```{r ma}
+plotMA(deseq.results)
+```
+
+To explore the distribution of the differential gene expression results for both effect size (fold change) and confidence (p-value), a volcano plot is typically used. This can provide an overall pattern of differential gene expression in the dataset, split by upregulation and downregulation events.
+
+```{r volcano, warning=FALSE}
+ggplot(as.data.frame(deseq.results), aes(log2FoldChange, -log10(pvalue))) +
+  geom_point(aes(colour = ifelse(padj < 0.05 & abs(log2FoldChange) > 1.5,
+                                 ifelse(log2FoldChange > 0, 'Up', 'Down'),
+                                 'None')), 
+             alpha = 0.2) +
+  scale_colour_manual(name = 'Significant differential expression',
+                      limits = c('Up', 'Down', 'None'),
+                      values = c('red', 'blue', 'grey')) +
+  theme_classic()
+```
+
+There are numerous downstream analysis options available given the quality checked and cleaned differential gene expression data. These approaches must be tailored to requirements in a project-specific manner. If you are interested in conducting such analyses or potential bioinformatics collaborations, please contact **Dr. Mansoor Saqi**, Head of Translational Bioinformatics at the NIHR Biomedical Research Centre, at mansoor.saqi@kcl.ac.uk
