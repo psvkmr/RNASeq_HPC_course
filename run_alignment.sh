@@ -6,20 +6,14 @@
 #SBATCH --ntasks=8
 #SBATCH --nodes=1
 #SBATCH --job-name=teaching_pipeline
-#SBATCH --output=/scratch/users/k2142172/teaching/logs/run_alignment.out
+#SBATCH --output=/scratch/groups/wg_translbio/HPC_RNASeq_course/logs/run_alignment.out
 
-# script exits if return value of a command is not zero
-#set -e
-# this forces all variables to be defined
-#set -u
-# for debugging prints out every line before executing it
-#set -x
-
-# CHANGE TO YOUR K NUMBER
+# CHANGE '--output' ABOVE TO /scratch/users/<your k number>/logs/run_alignment.out
+# CHANGE 'kcl_id' BELOW TO YOUR K NUMBER
 kcl_id=k2142172
 
 # variables - do not edit
-base_dir=/scratch/users/k2142172/teaching
+base_dir=/scratch/groups/wg_translbio/HPC_RNASeq_course
 user_dir=/scratch/users/${kcl_id}
 star=${base_dir}/packages/STAR-2.7.8a/bin/Linux_x86_64_static/STAR
 star_index=${base_dir}/resources/STAR

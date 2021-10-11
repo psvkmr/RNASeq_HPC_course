@@ -4,20 +4,14 @@
 #SBATCH --time=1:00:00
 #SBATCH --mem=8G
 #SBATCH --job-name=teaching_pipeline
-#SBATCH --output=/scratch/users/k2142172/teaching/logs/run_index_bams.out
+#SBATCH --output=/scratch/groups/wg_translbio/HPC_RNASeq_course/logs/run_index_bams.out
 
-# script exits if return value of a command is not zero
-#set -e
-# this forces all variables to be defined
-#set -u
-# for debugging prints out every line before executing it
-#set -x
-
-# CHANGE TO YOUR K NUMBER
+# CHANGE '--output' ABOVE TO /scratch/users/<your k number>/logs/run_index_bams.out
+# CHANGE 'kcl_id' BELOW TO YOUR K NUMBER
 kcl_id=k2142172
 
 # variables - do not edit
-base_dir=/scratch/users/k2142172/teaching
+base_dir=/scratch/groups/wg_translbio/HPC_RNASeq_course
 user_dir=/scratch/users/${kcl_id}
 samtools=${base_dir}/packages/samtools-1.11/bin/samtools
 
