@@ -3,16 +3,16 @@ title: 'Differential gene expression guide'
 subtitle: 'Utilising the DESeq2 package'
 author: 'Prasanth Sivakumar (prasanth.sivakumar@kcl.ac.uk)'
 output:
-  rmdformats::readthedown:
+  html_document:
     toc_depth: 4
     toc_collapsed: FALSE
-    highlight: espresso
+    theme: paper
 ---
 
 ```{r setup, include=FALSE}
 #install.packages('knitr')
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
-# set your own path to the folder containing the gene counts matrix
+# SET YOUR OWN PATH TO THE FOLDER WITH THE COUNTS MATRIX AND METADATA
 knitr::opts_knit$set(root.dir = normalizePath('C:/Users/Prasanth/google_drive/guys/teaching/gene_expression/')) 
 ```
 
@@ -22,7 +22,7 @@ This guide is designed to provide an example workflow for conducting differentia
 
 It typically uses default settings; alternative methods and arguments for each function should be explored when conducting the analysis on different datasets.
 
-The raw data was obtained from the publication: _*[**"A Beginner’s Guide to Analysis of RNA Sequencing Data"**]*(https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6096346/])_.
+The raw data was obtained from the publication: _[**"A Beginner’s Guide to Analysis of RNA Sequencing Data"**](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6096346/])_.
 
 The example dataset contains sequencing data from naive murine alveolar macrophages, comparing with those isolated from transplanted lungs 24 hours postreperfusion (n=4). 
 
