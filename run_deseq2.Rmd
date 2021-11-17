@@ -141,13 +141,6 @@ design.formula <- formula(~ isolate)
 design.formula
 ```
 
-A model matrix can be used to show how the provided design formula will be used to control the use of each variable in the metadata in the modelling process.
-
-```{r model_matrix}
-modelled.matrix <- model.matrix(design.formula, coldata)
-modelled.matrix
-```
-
 ## _DESeqDataSet_
 
 With the counts matrix, metadata, and design, the _DESeqDataSet_ object can be created.
@@ -219,7 +212,8 @@ colSums(counts.matrix) %>%
   rownames_to_column('sample') %>%
   ggplot(aes(sample, counts)) +
   geom_col() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) 
 ```
 
 As you can see, the libraries have notable differences in total counts, so without normalising these, the differential gene expression will just show differences in library sizes. \
@@ -234,6 +228,7 @@ colSums(counts(deseq.analysis, normalized = T)) %>%
   rownames_to_column('sample') %>%
   ggplot(aes(sample, counts)) +
   geom_col() +
+  theme_classic() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
 ```
 
@@ -262,7 +257,7 @@ Using the transformed data, principal component analysis can be conducted. The a
 
 ```{r pca}
 pca.df <- vst.matrix %>% assay() %>% t() %>% prcomp()
-pca.plot <- plotPCA(vst.matrix, intgroup = c('isolate'))
+pca.plot <- plotPCA(vst.matrix, intgroup = c('isolate')) + theme_classic()
 pca.plot
 ```
 
@@ -281,7 +276,8 @@ DESeq2 filters the overall counts matrix to remove genes with low counts from th
 ```{r filt}
 ggplot(metadata(deseq.results)$filterNumRej, aes(theta, numRej)) +
   geom_point() +
-  geom_vline(xintercept = metadata(deseq.results)$filterTheta)
+  geom_vline(xintercept = metadata(deseq.results)$filterTheta) +
+  theme_classic()
 ```
 
 The _DESeq_ function utilises the calculated dispersion metric dataset-wide in order to estimate more accurate variance levels in each individual gene's counts. It is key that these dispersion values fit with the pattern expected across the dataset, such as lower dispersion levels at greater mean normalised counts, and most genes showing similar levels of dispersion at a given number of mean normalised counts. They overall distribution pattern of the data should follow the fitted line of expected levels of dispersion regardless of any model variable, and the dispersion levels of most genes should be shrunk towards this line, towards a more likely true level of gene dispersion. If the dispersion data does not fit this pattern, the normalised count data may not follow the expected variance patterns and the subsequent gene expression differences tested may not be valid.
@@ -310,10 +306,10 @@ To explore the distribution of the differential gene expression results for both
 ggplot(as.data.frame(deseq.results), aes(log2FoldChange, -log10(pvalue))) +
   geom_point(aes(colour = ifelse(padj < 0.05 & abs(log2FoldChange) > 1.5,
                                  ifelse(log2FoldChange > 0, 'Up', 'Down'),
-                                 'None')), 
+                                 'No')), 
              alpha = 0.2) +
-  scale_colour_manual(name = 'Significant differential expression',
-                      limits = c('Up', 'Down', 'None'),
+  scale_colour_manual(name = str_wrap('Differentially expressed with large change', width = 10),
+                      limits = c('Up', 'Down', 'No'),
                       values = c('red', 'blue', 'grey')) +
   theme_classic()
 ```
