@@ -13,7 +13,7 @@ output:
 #install.packages('knitr')
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 # SET YOUR OWN PATH TO THE FOLDER WITH THE COUNTS MATRIX AND METADATA
-knitr::opts_knit$set(root.dir = normalizePath('C:/Users/Prasanth/google_drive/guys/teaching/gene_expression/')) 
+knitr::opts_knit$set(root.dir = normalizePath('C:/Users/Prasanth/Documents/rnaseq_course/180322/gene_expression/')) 
 ```
 
 ## Introduction
