@@ -1,7 +1,6 @@
 ---
 title: "RNA-Seq in HPC - Package installation"
 author: "Prasanth Sivakumar"
-date: "11/2021"
 output: html_document
 ---
 
