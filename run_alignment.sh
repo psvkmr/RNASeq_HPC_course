@@ -1,22 +1,23 @@
 #!/bin/bash
 
-#SBATCH --partition=brc
+#SBATCH --partition=cpu
 #SBATCH --time=04:00:00
 #SBATCH --mem=32G
 #SBATCH --ntasks=8
 #SBATCH --nodes=1
 #SBATCH --job-name=teaching_pipeline
-#SBATCH --output=/scratch/groups/wg_translbio/HPC_RNASeq_course/logs/run_alignment.out
+#SBATCH --output=/scratch/users/%u/teaching/logs/run_alignment.out
 
 # CHANGE '--output' ABOVE TO /scratch/users/<your k number>/logs/run_alignment.out
 # CHANGE 'kcl_id' BELOW TO YOUR K NUMBER
 kcl_id=k2142172
 
 # variables - do not edit
-base_dir=/scratch/groups/wg_translbio/HPC_RNASeq_course
+base_dir=/scratch/users/k2142172/teaching
 user_dir=/scratch/users/${kcl_id}
 star=${base_dir}/packages/STAR-2.7.8a/bin/Linux_x86_64_static/STAR
-star_index=${base_dir}/resources/STAR
+#star_index=${base_dir}/resources/STAR
+star_index=/scratch/users/k2142172/resources/GRCh38/STAR
 
 # create output dir if necessary
 mkdir -p ${user_dir}/teaching/outputs/bams
